@@ -11,6 +11,8 @@ mongoose.connect(process.env.DB_CONNECTION + process.env.DB_NAME);
 
 const app = express();
 
+app.use(express.json())
+app.use(express.urlencoded({ extended: true }))
 app.use('/resource', resourceRoutes)
 app.use('/notes', notesRoutes)
 

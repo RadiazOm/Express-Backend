@@ -6,6 +6,36 @@ import { Faker } from "@faker-js/faker";
 
 const routes = express.Router();
 
+routes.get('/', async (req, res) => {
+
+    let resources = await Resource.find()
+
+    res.json(resources)
+})
+
+routes.get('/:uid', async (req, res) => {
+    console.log(req.params.uid);
+    let resource = await Resource.find({'_id' : req.params.uid})
+
+    res.json(resource)
+})
+routes.post('/', async (req, res) => {
+    if (!req.is('application/json') || ![req.body.name, req.body.type, req.body.planet, req.body.quantity, req.body.recipe].every(string => string !== undefined)) {
+        res.sendStatus(400);
+    } else {
+        await Resource.create({
+            name: req.body.name,
+            type: req.body.type,
+            planet: req.body.planet,
+            quantity: req.body.quantity,
+            recipe: req.body.recipe
+        })
+
+        res.json({
+            message: 'Created Resource'
+        })
+    }
+})
 routes.post('/seed', async (req, res) => {
     console.log('Seed DB')
 
@@ -24,19 +54,6 @@ routes.post('/seed', async (req, res) => {
     res.json({
         message: "Seeded database"
     })
-})
-
-routes.get('/', async (req, res) => {
-
-    let resources = await Resource.find()
-
-    res.json(resources)
-})
-
-routes.get('/:uid', async (req, res) => {
-    let resource = await Resource.findById(req.params.uid)
-
-    res.json(resource)
 })
 
 export default routes
