@@ -16,8 +16,7 @@ app.use(express.urlencoded({ extended: true }))
 app.use('/resource', resourceRoutes)
 app.use('/notes', notesRoutes)
 
+console.log('started!')
+
 app.listen(process.env.EXPRESS_PORT);
 
-// app.get("/", (req, res) => {
-//     res.send("PRG6");
-// });
