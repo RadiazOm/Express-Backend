@@ -1,10 +1,37 @@
 import express from "express";
-import { faker } from "@faker-js/faker";
+import {da, faker} from "@faker-js/faker";
 import Resource from "../models/Resource.js";
-
-import { Faker } from "@faker-js/faker";
+import 'dotenv/config';
 
 const routes = express.Router();
+
+routes.options('/', function(req, res, next){
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Content-Length, X-Requested-With');
+    res.send(200);
+});
+
+routes.options('/:uid', function(req, res, next){
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Methods', 'GET,PUT,DELETE,OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Content-Length, X-Requested-With');
+    res.send(200);
+});
+
+routes.use((req, res, next) => {
+    if (req.method !== 'GET' && req.method !== 'DELETE') {
+        if (![req.body.name, req.body.type, req.body.planet, req.body.quantity, req.body.recipe].every(string => string !== undefined)) {
+            res.sendStatus(400);
+        } else {
+            next()
+        }
+    } else {
+        console.log('no json file');
+        next()
+    }
+})
+
 
 /**
  Get all the resources
@@ -13,7 +40,18 @@ routes.get('/', async (req, res) => {
 
     let resources = await Resource.find()
 
-    res.json(resources)
+    // for (const resource of resources) {
+    //     resource._links = {
+    //         self: `https://${process.env.EXPRESS_URI}:${process.env.EXPRESS_PORT}/${resource._id}`,
+    //         collection: `https://${process.env.EXPRESS_URI}:${process.env.EXPRESS_PORT}`
+    //     }
+    // }
+
+    let items = formatJSON(resources)
+
+    res.json({
+        items: items,
+    })
 })
 
 
@@ -25,7 +63,11 @@ routes.get('/:uid', async (req, res) => {
     try {
         let resource = await Resource.findOne({'_id' : req.params.uid})
 
-        res.json(resource)
+        let items = formatJSON(resource)
+
+        res.json({
+            items: items
+        })
     } catch (e) {
         res.json({
             message: 'Could not find resource'
@@ -37,46 +79,38 @@ routes.get('/:uid', async (req, res) => {
  Create a new resource
  **/
 routes.post('/', async (req, res) => {
-    if (!req.is('application/json') || ![req.body.name, req.body.type, req.body.planet, req.body.quantity, req.body.recipe].every(string => string !== undefined)) {
-        res.sendStatus(400);
-    } else {
-        await Resource.create({
-            name: req.body.name,
-            type: req.body.type,
-            planet: req.body.planet,
-            quantity: req.body.quantity,
-            recipe: req.body.recipe
-        })
+    await Resource.create({
+        name: req.body.name,
+        type: req.body.type,
+        planet: req.body.planet,
+        quantity: req.body.quantity,
+        recipe: req.body.recipe
+    })
 
-        res.json({
-            message: 'Created Resource'
-        })
-    }
+    res.json({
+        message: 'Created Resource'
+    })
 })
 
 /**
  Updates an existing resource
  **/
 routes.put('/:uid', async (req, res) => {
-    if (!req.is('application/json') || ![req.body.name, req.body.type, req.body.planet, req.body.quantity, req.body.recipe].every(string => string !== undefined)) {
-        res.sendStatus(400);
-    } else {
-        try {
-            let item = await Resource.updateOne({_id: req.params.uid}, {
-                name: req.body.name,
-                type: req.body.type,
-                planet: req.body.planet,
-                quantity: req.body.quantity,
-                recipe: req.body.recipe
-            })
-            res.json({
-                message: 'Updated resource'
-            })
-        }   catch (e) {
-            res.json({
-                message: 'Invalid format or incorrect id'
-            })
-        }
+    try {
+        let item = await Resource.updateOne({_id: req.params.uid}, {
+            name: req.body.name,
+            type: req.body.type,
+            planet: req.body.planet,
+            quantity: req.body.quantity,
+            recipe: req.body.recipe
+        })
+        res.json({
+            message: 'Updated resource'
+        })
+    }   catch (e) {
+        res.json({
+            message: 'Invalid format or incorrect id'
+        })
     }
 })
 
@@ -123,5 +157,30 @@ routes.post('/seed', async (req, res) => {
         message: "Seeded database"
     })
 })
+
+function formatJSON(data){
+    let JSON = [];
+
+    // I have no idea why but this turns into and index instead of objects from data
+    for (const dataIndex in data) {
+        let newJson = {}
+        newJson.id = data[dataIndex]._id
+        newJson.name = data[dataIndex].name
+        newJson.type = data[dataIndex].type
+        newJson.planet = data[dataIndex].planet
+        newJson.quantity = data[dataIndex].quantity
+        newJson.recipe = data[dataIndex].recipe
+        newJson._links = {
+            self: {
+                href: `${process.env.EXPRESS_URI}:${process.env.EXPRESS_PORT}/resource/${data[dataIndex]._id}`
+            },
+            collection: {
+                href: `${process.env.EXPRESS_URI}:${process.env.EXPRESS_PORT}/resource/`
+            }
+        }
+        JSON.push(newJson)
+    }
+    return JSON
+}
 
 export default routes
