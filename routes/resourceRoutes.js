@@ -1,5 +1,5 @@
 import express from "express";
-import {da, faker} from "@faker-js/faker";
+import { faker} from "@faker-js/faker";
 import Resource from "../models/Resource.js";
 import 'dotenv/config';
 
@@ -9,23 +9,31 @@ routes.options('/', function(req, res, next){
     res.header('Access-Control-Allow-Origin', '*');
     res.header('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
     res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Content-Length, X-Requested-With');
-    res.send(200);
+    res.sendStatus(200);
 });
 
-routes.options('/:uid', function(req, res, next){
+routes.options('/:id', function(req, res, next){
     res.header('Access-Control-Allow-Origin', '*');
     res.header('Access-Control-Allow-Methods', 'GET,PUT,DELETE,OPTIONS');
     res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Content-Length, X-Requested-With');
-    res.send(200);
+    res.sendStatus(200);
 });
 
+
+
 routes.use((req, res, next) => {
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Content-Length, X-Requested-With');
     if (req.method !== 'GET' && req.method !== 'DELETE' && req.header('Method') !== 'seed') {
-        if (![req.body.name, req.body.type, req.body.planet, req.body.quantity, req.body.recipe].every(string => string !== undefined)) {
+        if (![req.body.name, req.body.type, req.body.planet, req.body.quantity, req.body.recipe].every(string => string !== undefined && string !== '')) {
             res.sendStatus(400);
         } else {
-            console.log('json file correctly formed');
-            next()
+            if (isNaN(req.body.quantity)) {
+                res.sendStatus(400)
+            } else {
+                console.log('json file correctly formed');
+                next()
+            }
         }
     } else {
         console.log('no json file');
@@ -100,7 +108,7 @@ routes.get('/:id', async (req, res) => {
             items
         )
     } catch (e) {
-        res.json({
+        res.status(404).json({
             message: 'Could not find resource'
         })
     }
@@ -118,28 +126,27 @@ routes.post('/', async (req, res) => {
         recipe: req.body.recipe
     })
 
-    res.json({
-        message: 'Created Resource'
+    res.status(201).json({
+        message: 'Created resource'
     })
 })
 
 /**
  Updates an existing resource
  **/
-routes.put('/:uid', async (req, res) => {
+routes.put('/:id', async (req, res) => {
     try {
-        let item = await Resource.updateOne({_id: req.params.uid}, {
+        await Resource.updateOne({_id: req.params.id}, {
             name: req.body.name,
             type: req.body.type,
             planet: req.body.planet,
             quantity: req.body.quantity,
             recipe: req.body.recipe
         })
-        res.json({
-            message: 'Updated resource'
-        })
+        let item = await Resource.findOne({_id: req.params.id})
+        res.status(200).json(item)
     }   catch (e) {
-        res.json({
+        res.status(400).json({
             message: 'Invalid format or incorrect id'
         })
     }
@@ -148,19 +155,19 @@ routes.put('/:uid', async (req, res) => {
 /**
  Deletes a resource
  **/
-routes.delete('/:uid', async (req, res) => {
+routes.delete('/:id', async (req, res) => {
     try {
-        let resource = await Resource.findOne({'_id' : req.params.uid})
+        let resource = await Resource.findOne({'_id' : req.params.id})
 
         if (resource) {
-            await Resource.deleteOne({_id: req.params.uid})
+            await Resource.deleteOne({_id: req.params.id})
         }
 
-        res.json({
+        res.status(204).json({
             message: 'Deleted resource'
         })
     } catch (e) {
-        res.json({
+        res.status(404).json({
             message: 'Could not find resource'
         })
     }

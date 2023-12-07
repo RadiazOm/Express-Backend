@@ -1,7 +1,6 @@
 import mongoose from 'mongoose';
 import express from 'express';
 import 'dotenv/config';
-import notesRoutes from './routes/notesRoutes.js'
 import resourceRoutes from "./routes/resourceRoutes.js";
 
 
@@ -14,7 +13,7 @@ const app = express();
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
 app.use('/resource', resourceRoutes)
-app.use('/notes', notesRoutes)
+app.use(function errorHandler(err, req, res, next) { res.send('error happened ' + err.message) });
 
 console.log('started!')
 
