@@ -20,10 +20,11 @@ routes.options('/:uid', function(req, res, next){
 });
 
 routes.use((req, res, next) => {
-    if (req.method !== 'GET' && req.method !== 'DELETE') {
+    if (req.method !== 'GET' && req.method !== 'DELETE' && req.header('Method') !== 'seed') {
         if (![req.body.name, req.body.type, req.body.planet, req.body.quantity, req.body.recipe].every(string => string !== undefined)) {
             res.sendStatus(400);
         } else {
+            console.log('json file correctly formed');
             next()
         }
     } else {
@@ -51,6 +52,35 @@ routes.get('/', async (req, res) => {
 
     res.json({
         items: items,
+        _links: {
+            self: {
+                href: `${process.env.EXPRESS_URI}:${process.env.EXPRESS_PORT}/resource/`
+            }
+        },
+        pagination: {
+            currentPage: 1,
+            currentItems: items.length,
+            totalPages: 1,
+            totalItems: items.length,
+            _links: {
+                first: {
+                    page: 1,
+                    href: `${process.env.EXPRESS_URI}:${process.env.EXPRESS_PORT}/resource/`
+                },
+                last: {
+                    page: 1,
+                    href: `${process.env.EXPRESS_URI}:${process.env.EXPRESS_PORT}/resource/`
+                },
+                previous: {
+                    page: 1,
+                    href: `${process.env.EXPRESS_URI}:${process.env.EXPRESS_PORT}/resource/`
+                },
+                next: {
+                    page: 1,
+                    href: `${process.env.EXPRESS_URI}:${process.env.EXPRESS_PORT}/resource/`
+                }
+            }
+        }
     })
 })
 
@@ -59,15 +89,16 @@ routes.get('/', async (req, res) => {
 /**
  Get a specific resource by id
  **/
-routes.get('/:uid', async (req, res) => {
+routes.get('/:id', async (req, res) => {
     try {
-        let resource = await Resource.findOne({'_id' : req.params.uid})
+        let resource = await Resource.findOne({'_id' : req.params.id})
 
-        let items = formatJSON(resource)
+        let items = formatDetailJSON(resource)
+        console.log(items)
 
-        res.json({
-            items: items
-        })
+        res.json(
+            items
+        )
     } catch (e) {
         res.json({
             message: 'Could not find resource'
@@ -158,10 +189,31 @@ routes.post('/seed', async (req, res) => {
     })
 })
 
+function formatDetailJSON(data) {
+    let JSON = {};
+
+    JSON.id = data._id
+    JSON.name = data.name
+    JSON.type = data.type
+    JSON.planet = data.planet
+    JSON.quantity = data.quantity
+    JSON.recipe = data.recipe
+    JSON._links = {
+        self: {
+            href: `${process.env.EXPRESS_URI}:${process.env.EXPRESS_PORT}/resource/${data._id}`
+        },
+        collection: {
+            href: `${process.env.EXPRESS_URI}:${process.env.EXPRESS_PORT}/resource/`
+        }
+    }
+
+    return JSON
+}
+
 function formatJSON(data){
     let JSON = [];
 
-    // I have no idea why but this turns into and index instead of objects from data
+    // I have no idea why but dataIndex turns into an index instead of objects from data
     for (const dataIndex in data) {
         let newJson = {}
         newJson.id = data[dataIndex]._id
@@ -180,6 +232,7 @@ function formatJSON(data){
         }
         JSON.push(newJson)
     }
+
     return JSON
 }
 
