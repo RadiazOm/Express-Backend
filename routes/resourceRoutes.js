@@ -1,11 +1,14 @@
 import express from "express";
-import { faker} from "@faker-js/faker";
+import {da, faker} from "@faker-js/faker";
 import Resource from "../models/Resource.js";
 import 'dotenv/config';
+import pagination from '../pagination/Pagination.js'
+import Pagination from "../pagination/Pagination.js";
 
 const routes = express.Router();
 
 routes.options('/', function(req, res, next){
+    res.header('Allow', 'GET,POST,OPTIONS');
     res.header('Access-Control-Allow-Origin', '*');
     res.header('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
     res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Content-Length, X-Requested-With');
@@ -13,6 +16,7 @@ routes.options('/', function(req, res, next){
 });
 
 routes.options('/:id', function(req, res, next){
+    res.header('Allow', 'GET,PUT,DELETE,OPTIONS');
     res.header('Access-Control-Allow-Origin', '*');
     res.header('Access-Control-Allow-Methods', 'GET,PUT,DELETE,OPTIONS');
     res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Content-Length, X-Requested-With');
@@ -24,16 +28,23 @@ routes.options('/:id', function(req, res, next){
 routes.use((req, res, next) => {
     res.header('Access-Control-Allow-Origin', '*');
     res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Content-Length, X-Requested-With');
+    if (!req.accepts('application/json')) {
+        res.sendStatus(400)
+        return;
+    }
+    console.log(`METHOD = ${req.method}`)
     if (req.method !== 'GET' && req.method !== 'DELETE' && req.header('Method') !== 'seed') {
         if (![req.body.name, req.body.type, req.body.planet, req.body.quantity, req.body.recipe].every(string => string !== undefined && string !== '')) {
+            console.log('Invalid format')
             res.sendStatus(400);
         } else {
-            if (isNaN(req.body.quantity)) {
-                res.sendStatus(400)
-            } else {
+            // if (isNaN(req.body.quantity)) {
+            //     console.log(`Not a number with: ${req.body.quantity}`)
+            //     res.sendStatus(400)
+            // } else {
                 console.log('json file correctly formed');
                 next()
-            }
+            // }
         }
     } else {
         console.log('no json file');
@@ -56,7 +67,9 @@ routes.get('/', async (req, res) => {
     //     }
     // }
 
-    let items = formatJSON(resources)
+    let items = formatJSON(resources, req.query)
+
+    let paginationObject = Pagination.format(resources, req.query)
 
     res.json({
         items: items,
@@ -65,30 +78,7 @@ routes.get('/', async (req, res) => {
                 href: `${process.env.EXPRESS_URI}:${process.env.EXPRESS_PORT}/resource/`
             }
         },
-        pagination: {
-            currentPage: 1,
-            currentItems: items.length,
-            totalPages: 1,
-            totalItems: items.length,
-            _links: {
-                first: {
-                    page: 1,
-                    href: `${process.env.EXPRESS_URI}:${process.env.EXPRESS_PORT}/resource/`
-                },
-                last: {
-                    page: 1,
-                    href: `${process.env.EXPRESS_URI}:${process.env.EXPRESS_PORT}/resource/`
-                },
-                previous: {
-                    page: 1,
-                    href: `${process.env.EXPRESS_URI}:${process.env.EXPRESS_PORT}/resource/`
-                },
-                next: {
-                    page: 1,
-                    href: `${process.env.EXPRESS_URI}:${process.env.EXPRESS_PORT}/resource/`
-                }
-            }
-        }
+        pagination: paginationObject
     })
 })
 
@@ -135,7 +125,9 @@ routes.post('/', async (req, res) => {
  Updates an existing resource
  **/
 routes.put('/:id', async (req, res) => {
+    console.log('got in here')
     try {
+        console.log(req.body)
         await Resource.updateOne({_id: req.params.id}, {
             name: req.body.name,
             type: req.body.type,
@@ -143,7 +135,9 @@ routes.put('/:id', async (req, res) => {
             quantity: req.body.quantity,
             recipe: req.body.recipe
         })
+        console.log('updated resource')
         let item = await Resource.findOne({_id: req.params.id})
+        console.log(item)
         res.status(200).json(item)
     }   catch (e) {
         res.status(400).json({
@@ -217,21 +211,28 @@ function formatDetailJSON(data) {
     return JSON
 }
 
-function formatJSON(data){
+function formatJSON(data, query) {
     let JSON = [];
-
-    // I have no idea why but dataIndex turns into an index instead of objects from data
-    for (const dataIndex in data) {
+    let start = query.start - 1
+    let limit = Math.min(data.length, query.limit)
+    if (isNaN(start) || start <= 0) {
+        start = 0
+    }
+    if (isNaN(limit)) {
+        limit = Pagination.currentItems(data.length, start, limit)
+    }
+    // I have no idea why but i turns into an index instead of objects from data
+    for (let i = start; i < Math.min(data.length, start + limit); i++) {
         let newJson = {}
-        newJson.id = data[dataIndex]._id
-        newJson.name = data[dataIndex].name
-        newJson.type = data[dataIndex].type
-        newJson.planet = data[dataIndex].planet
-        newJson.quantity = data[dataIndex].quantity
-        newJson.recipe = data[dataIndex].recipe
+        newJson.id = data[i]._id
+        newJson.name = data[i].name
+        newJson.type = data[i].type
+        newJson.planet = data[i].planet
+        newJson.quantity = data[i].quantity
+        newJson.recipe = data[i].recipe
         newJson._links = {
             self: {
-                href: `${process.env.EXPRESS_URI}:${process.env.EXPRESS_PORT}/resource/${data[dataIndex]._id}`
+                href: `${process.env.EXPRESS_URI}:${process.env.EXPRESS_PORT}/resource/${data[i]._id}`
             },
             collection: {
                 href: `${process.env.EXPRESS_URI}:${process.env.EXPRESS_PORT}/resource/`

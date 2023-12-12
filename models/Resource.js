@@ -6,7 +6,7 @@ const resourceSchema = new Schema({
     name: String,
     type: String,
     planet: String,
-    quantity: Number,
+    quantity: String,
     recipe: String
 });
 
