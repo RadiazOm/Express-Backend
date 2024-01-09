@@ -1,9 +1,9 @@
 import express from "express";
-import {da, faker} from "@faker-js/faker";
+import {faker} from "@faker-js/faker";
 import Resource from "../models/Resource.js";
 import 'dotenv/config';
-import pagination from '../pagination/Pagination.js'
 import Pagination from "../pagination/Pagination.js";
+import resource from "../models/Resource.js";
 
 const routes = express.Router();
 
@@ -22,8 +22,6 @@ routes.options('/:id', function(req, res, next){
     res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Content-Length, X-Requested-With');
     res.sendStatus(200);
 });
-
-
 
 routes.use((req, res, next) => {
     res.header('Access-Control-Allow-Origin', '*');
@@ -51,7 +49,6 @@ routes.use((req, res, next) => {
         next()
     }
 })
-
 
 /**
  Get all the resources
@@ -81,8 +78,6 @@ routes.get('/', async (req, res) => {
         pagination: paginationObject
     })
 })
-
-
 
 /**
  Get a specific resource by id
@@ -175,13 +170,29 @@ routes.post('/seed', async (req, res) => {
 
     await Resource.deleteMany();
 
+    const nameList = ['Aluminum', 'Aluminum Alloy', 'Ammonium', 'Argon', 'Astronium', 'Attactus', 'Carbon', 'Ceramic', 'Clay',
+        'Compound', 'Copper', 'Diamond', 'EXO Chip', 'Explosive Powder', 'Glass', 'Graphene', 'Graphite', 'Helium', 'Hematite',
+        'Hydrazine', 'Hydrogen', 'Iron', 'Laterite', 'Lithium', 'Malachite', 'Methane', 'Nanocarbon Alloy', 'Nitrogen', 'Organic',
+        'Oxygen', 'Plastic', 'Power', 'Quartz', 'Research Sample', 'Resin', 'Rubber', 'Scrap', 'Seed', 'Silicon', 'Soil', 'Spew Flower',
+        'Sphalerite', 'Spookysquash', 'Steel', 'Sturdysquash Sample', 'Sulfur', 'Titanite', 'Titanium', 'Titanium Alloy', 'Tungsten',
+        'Tungsten Carbide', 'Wolframite', 'Zinc']
+    const typeList = ['Natural', 'Refined', 'Atmospheric', 'Composite', 'Other']
+    const planetList = ['Atrox', 'Calidor', 'Desolo', 'Glacio', 'Novus', 'Sylva', 'Vesania']
     for (let i = 0; i < 10; i++) {
+        const type = typeList[Math.floor(Math.random()*typeList.length)]
+        let recipe = 'None'
+        if (type === 'Composite') {
+            recipe = nameList[Math.floor(Math.random()*nameList.length)] + ' + ' + nameList[Math.floor(Math.random()*nameList.length)]
+        }
+        if (type === 'Refined') {
+            recipe = nameList[Math.floor(Math.random()*nameList.length)]
+        }
         await Resource.create({
-            name: faker.science.chemicalElement().name,
-            type: faker.lorem.word({length: {min: 5, max: 10}, strategy: 'closest'}),
-            planet: faker.lorem.word({length: {min: 5, max: 15}, strategy: 'closest'}),
-            quantity: faker.number.int({min: 0, max: 100}),
-            recipe: faker.lorem.words({min: 2, max: 3})
+            name: nameList[Math.floor(Math.random()*nameList.length)],
+            type: type,
+            planet: planetList[Math.floor(Math.random()*planetList.length)],
+            quantity: faker.number.int({min: 0, max: 100}) + '%',
+            recipe: recipe
         })
     }
 
